@@ -215,14 +215,15 @@ const DEMO=[
 function tick(){const n=new Date();document.getElementById(‘clk’).textContent=n.toLocaleTimeString(‘ko-KR’,{hour:‘2-digit’,minute:‘2-digit’})}
 setInterval(tick,1000);tick();
 
+let MK_API_KEY=’’;
 function toggleApi(){const s=document.getElementById(‘apiSection’);s.style.display=s.style.display===‘none’?’’:‘none’}
 function saveKey(){
 const k=document.getElementById(‘apiKey’).value.trim();
-if(!k||!k.startsWith(‘sk-ant-’)){setStatus(‘올바른 키를 입력해줘 (sk-ant-…)’,‘err’);return}
-sessionStorage.setItem(‘mk_key’,k);setStatus(‘✓ 저장됨 — 점술 분석 활성화’,‘ok’);
+if(!k||k.length<10){setStatus(‘API 키를 입력해줘’,‘err’);return}
+MK_API_KEY=k;setStatus(‘✓ 저장됨 — 점술 분석 활성화’,‘ok’);
 }
 function setStatus(m,t){const e=document.getElementById(‘apiStatus’);e.textContent=m;e.className=‘api-status’+(t?’ ‘+t:’’)}
-function getKey(){return sessionStorage.getItem(‘mk_key’)||’’}
+function getKey(){return MK_API_KEY}
 function getKws(){
 const chips=[…document.querySelectorAll(’.kw-chip.on’)].map(e=>e.dataset.kw);
 const c=document.getElementById(‘customKw’).value.trim();
@@ -232,7 +233,7 @@ if(c)chips.push(c);return chips;
 async function analyzeJob(job){
 const key=getKey();if(!key)return null;
 const prompt=`${MK}\n\n[공고]\n제목:${job.title}\n회사:${job.company}\n내용:${job.desc||''}\n\n민정 차트로 점술 매칭 분석. JSON만 반환:\n{"astroScore":0-100,"sajuScore":0-100,"jamiScore":0-100,"specScore":0-100,"grade":"SS"|"A"|"B"|"C","ohaeng":"오행 한줄","comment":"2-3문장 점술해석","skills":[{"name":"스킬","type":"match"|"partial"|"new"}]}`;
-const r=await fetch(‘https://api.anthropic.com/v1/messages’,{method:‘POST’,headers:{‘Content-Type’:‘application/json’},body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:800,messages:[{role:‘user’,content:prompt}]})});
+const r=await fetch(‘https://api.anthropic.com/v1/messages’,{method:‘POST’,headers:{‘Content-Type’:‘application/json’,‘x-api-key’:MK_API_KEY,‘anthropic-version’:‘2023-06-01’,‘anthropic-dangerous-direct-browser-access’:‘true’},body:JSON.stringify({model:‘claude-sonnet-4-20250514’,max_tokens:800,messages:[{role:‘user’,content:prompt}]})});
 if(!r.ok)throw new Error(r.status);
 const d=await r.json();
 const t=d.content.map(c=>c.text||’’).join(’’).replace(/`json|`/g,’’).trim();
@@ -334,7 +335,6 @@ renderCards(jobs);
 btn.disabled=false;
 }
 
-const sk=sessionStorage.getItem(‘mk_key’);
 if(sk){document.getElementById(‘apiKey’).value=sk;setStatus(‘✓ 저장됨 — 점술 분석 활성화’,‘ok’)}
 </script>
 
