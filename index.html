@@ -1,5 +1,31 @@
 <!doctype html>
 <html lang="ko">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>JobStar</title></head>
-<body><h1>JobStar</h1><p>GitHub Pages 연결 확인 완료</p></body>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JobStar</title>
+<style>
+body{margin:0;background:#10131a;color:#eef3fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}main{max-width:980px;margin:auto;padding:28px 18px 64px}.hero,.card{background:#1a2030;border:1px solid #30394d;border-radius:18px;padding:18px;margin:14px 0}h1{margin:0 0 8px;font-size:30px}h2{margin:0 0 12px;font-size:19px}.sub,.meta{color:#aeb8cc;line-height:1.5}input,textarea{width:100%;box-sizing:border-box;border:1px solid #3c465d;background:#0e1420;color:#eef3fb;border-radius:12px;padding:12px;margin:6px 0 10px}textarea{min-height:220px;resize:vertical}button{border:0;border-radius:12px;background:#3d7eff;color:white;padding:11px 15px;font-weight:800;cursor:pointer}.item{border-top:1px solid #30394d;padding:12px 0}.item:first-child{border-top:0}.score{color:#ffd36f;font-weight:800}.good{color:#9ee6a3}.risk{color:#ffb3a7}.pill{display:inline-block;border:1px solid #3c465d;border-radius:999px;padding:4px 9px;margin:3px 4px 3px 0;color:#cdd6e8;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<section class="hero"><h1>JobStar</h1><p class="sub">채용 알림 메일을 붙여넣으면 공고를 추출하고, 선호·회피 조건 기준으로 오늘 볼 만한 TOP 5를 골라줍니다.</p></section>
+<section class="card"><h2>1) 내 조건</h2><div class="grid"><div><label>선호조건</label><input id="prefer" value="FP&A, 재무기획, 경영관리, 연결회계, 자금관리, 금융, 핀테크, Finance, Accounting Manager, AI"></div><div><label>회피조건</label><input id="avoid" value="기장, 종합소득세, 일반전표, 아르바이트, 일반사무, 총무, 인사, 법무"></div></div></section>
+<section class="card"><h2>2) 메일 본문 붙여넣기</h2><textarea id="mail" placeholder="사람인 또는 LinkedIn 채용 알림 메일 본문을 붙여넣으세요."></textarea><button id="go">분석하기</button> <button id="sample" style="background:#2b3344">샘플 넣기</button></section>
+<section class="card"><h2>3) 추출된 공고 미리보기</h2><div id="preview" class="sub">아직 추출된 공고가 없습니다.</div></section>
+<section class="card"><h2>4) 오늘 볼 만한 공고 TOP 5</h2><div id="result" class="sub">분석 결과가 여기에 표시됩니다.</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);const arr=id=>$(id).value.split(',').map(x=>x.trim()).filter(Boolean);
+function clean(t){return t.split('\n').map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x&&!/(입사지원|하러가기|더보기|Copyright|대표|주소|모두 보기|알림 설정)/i.test(x))}
+function kind(t){if(/linkedin|채용공고 알림/i.test(t))return['LinkedIn','링크드인형'];if(/오늘의 공채 소식|직무 맞춤 공채/.test(t))return['사람인','공채형'];if(/저장한 검색 조건/.test(t))return['사람인','저장검색형'];if(/추천공고|오늘의 추천|최근 활동/.test(t))return['사람인','추천형'];return['기타','기타']}
+function cd(line){let m=line.match(/^(.*?)(~\d{4}-\d{2}-\d{2}|~채용시|채용시|상시|\d{2}\/\d{2}|마감\s*\d+일\s*전)$/);return m?{company:m[1].trim(),deadline:m[2].trim()}:{company:line,deadline:''}}
+function parse(t){let [platform,type]=kind(t), lines=clean(t), jobs=[], section='';
+ if(platform==='LinkedIn'){for(let i=0;i<lines.length-2;i++){let c=lines[i],title=lines[i+1],meta=lines[i+2];if(meta.startsWith(c+' ·')){let info=meta.replace(c+' ·',''),w=(info.match(/\((.*?)\)/)||[])[1]||'',loc=info.replace(/\(.*?\)/,'').trim();jobs.push({platform,type,section,company:c,title,deadline:'',location:loc,work:w})}}}
+ else{for(let i=0;i<lines.length;i++){let line=lines[i];if(['직무 맞춤 공채 공고 추천','연봉 TOP 30% 공고','조회수 높은 공고','워라밸 좋은 회사','오늘의 추천'].includes(line)){section=line;continue}let one=line.match(/^(.*?)\s+-\s+(.*?)\s+(~\d{4}-\d{2}-\d{2}|~채용시|채용시|상시)$/);if(one){jobs.push({platform,type,section,company:one[1].trim(),title:one[2].trim(),deadline:one[3].trim()});continue}if(/(~\d{4}-\d{2}-\d{2}|~채용시|채용시|상시|\d{2}\/\d{2}|마감\s*\d+일\s*전)$/.test(line)){let x=cd(line),title=lines[i+1]||'';if(title&&!/(김민정|추천공고|공채 소식|최근 활동)/.test(x.company+title))jobs.push({platform,type,section,company:x.company,title,deadline:x.deadline})}}}
+ let map=new Map();jobs.forEach(j=>{if(j.company&&j.title)map.set((j.company+'::'+j.title).toLowerCase(),j)});return [...map.values()]}
+function score(j){let s=45,good=[],risk=[],text=(j.company+' '+j.title+' '+j.section).toLowerCase();arr('prefer').forEach(w=>{if(text.includes(w.toLowerCase())){s+=10;good.push(w)}});arr('avoid').forEach(w=>{if(text.includes(w.toLowerCase())){s-=13;risk.push(w)}});return {...j,score:Math.max(0,Math.min(100,s)),good,risk}}
+function render(){let jobs=parse($('mail').value);$('preview').innerHTML=jobs.length?`<p><span class="pill">추출 ${jobs.length}개</span></p>`+jobs.map((j,i)=>`<div class="item"><b>${i+1}. ${j.company}</b> · ${j.title}<div class="meta">${j.platform} / ${j.type} / ${j.section||'-'} / ${j.deadline||'-'} ${j.location||''} ${j.work||''}</div></div>`).join(''):'공고를 찾지 못했습니다.';let top=jobs.map(score).sort((a,b)=>b.score-a.score).slice(0,5);$('result').innerHTML=top.length?top.map((j,i)=>`<div class="item"><b>TOP ${i+1}. ${j.company}</b> · ${j.title}<div class="score">점수 ${j.score}</div><div class="good">추천 이유: ${j.good.length?j.good.join(', '):'기본 점수'}</div><div class="risk">위험 신호: ${j.risk.length?j.risk.join(', '):'뚜렷한 위험 신호 없음'}</div></div>`).join(''):'추천할 공고가 없습니다.'}
+$('go').onclick=render;$('sample').onclick=()=>{$('mail').value=`김민정님을 위한 추천공고\n최근 활동을 분석하여\n5건의 공고를 찾았습니다.\n오늘의 추천\n\n(주)위즈코리아마감 1일 전\n\n위즈코리아 상반기 신입/경력 사원 모집\n\n(주)엑소코바이오마감 1일 전\n\n재무회계팀 팀장 채용공고\n\n(주)먼슬리키친채용시\n\n재무회계 5년이상 / 결산, 자금관리`;render()};
+</script>
+</body>
 </html>
